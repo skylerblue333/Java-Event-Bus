@@ -1,0 +1,1 @@
+# Java-Event-Bus\n\n## Overview\nEnterprise-grade event bus implementation in Java.\n\n## Quick Start (1-Click Build)\n\n```bash\ngit clone https://github.com/skylerblue333/Java-Event-Bus.git\ncd Java-Event-Bus\n# Build instructions depend on the language\n```\n
