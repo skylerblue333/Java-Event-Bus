@@ -1,1 +1,0 @@
-// Starting Java-Event-Bus service\n
