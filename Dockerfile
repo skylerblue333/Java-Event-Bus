@@ -7,7 +7,6 @@ RUN mkdir -p out/main \
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-RUN groupadd --system app && useradd --system --gid app --uid 10001 app
-COPY --from=build --chown=app:app /out.jar ./sky-event-bus.jar
+COPY --from=build --chown=10001:10001 /out.jar ./sky-event-bus.jar
 USER 10001:10001
 ENTRYPOINT ["java", "-jar", "sky-event-bus.jar"]
