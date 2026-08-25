@@ -18,24 +18,32 @@ public final class EventBusTest {
     private static void publishesInSubscriptionOrder() throws Exception {
         var bus = new EventBus();
         var seen = new ArrayList<String>();
-        try (var first = bus.subscribe("orders.created", event -> seen.add("first:" + event.payload()));
-             var second = bus.subscribe("orders.created", event -> seen.add("second:" + event.payload()))) {
+        var first = bus.subscribe("orders.created", event -> seen.add("first:" + event.payload()));
+        var second = bus.subscribe("orders.created", event -> seen.add("second:" + event.payload()));
+        try {
             var result = bus.publish(new Event("evt-1", "orders.created", Instant.EPOCH, Map.of(), "42"));
             check(result.delivered() == 2, "expected two deliveries");
             check(result.failed() == 0, "expected no failures");
             check(seen.equals(java.util.List.of("first:42", "second:42")), "subscription order changed");
+        } finally {
+            second.close();
+            first.close();
         }
     }
 
     private static void isolatesSubscriberFailure() throws Exception {
         var bus = new EventBus();
         var seen = new ArrayList<String>();
-        try (var bad = bus.subscribe("topic", event -> { throw new IllegalStateException("boom"); });
-             var good = bus.subscribe("topic", event -> seen.add(event.id()))) {
+        var bad = bus.subscribe("topic", event -> { throw new IllegalStateException("boom"); });
+        var good = bus.subscribe("topic", event -> seen.add(event.id()));
+        try {
             var result = bus.publish(new Event("evt-2", "topic", Instant.EPOCH, Map.of(), ""));
             check(result.delivered() == 1, "good subscriber was not delivered");
             check(result.failed() == 1, "subscriber failure was not counted");
             check(seen.equals(java.util.List.of("evt-2")), "good subscriber did not run");
+        } finally {
+            good.close();
+            bad.close();
         }
     }
 
