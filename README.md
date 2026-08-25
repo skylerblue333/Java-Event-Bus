@@ -1,44 +1,53 @@
-<!-- PORTFOLIO PROJECT PROFILE: maintained by the repository owner -->
+# Sky Java Event Bus
 
-## Project profile and code-audit snapshot
+**Status: engineering beta.** A dependency-free Java 21 in-process event bus for bounded synchronous publish/subscribe workflows.
 
-**What this is:** **Java-Event-Bus** is a public repository described as: “Enterprise-grade event bus implementation in Java. #SkyCoin4444 #AI #Blockchain #DevOps #Innovation” Its dominant language signals are **Python (4 files)**.
+## Implemented behavior
 
-**Why it has value:** Its value is best understood through the implementation evidence currently present in the repository: **18 tracked files** were observed in the shallow audit, with the source structure and existing documentation providing the project’s specific context. This README does not treat a prototype, experiment, or archive as a production system without supporting evidence.
+- real Java 21 records/classes with no third-party runtime dependencies
+- bounded event IDs, topic names, attributes, and payload sizes
+- thread-safe topic registry using concurrent collections
+- deterministic subscriber order within each topic
+- explicit subscription handles that unsubscribe on `close()`
+- subscriber failure isolation: one handler failure is counted without preventing later handlers from receiving the event
+- counters for published events, successful deliveries, subscriber failures, and active topics
+- hard caps of 1,000 topics and 100 subscribers per topic
+- dependency-free test harness for ordering, failure isolation, unsubscribe behavior, and input validation
+- CI compiles production/tests with `javac -Xlint:all -Werror`, runs tests, builds a runnable JAR, smoke-tests the CLI, builds a container, and verifies non-root execution
 
-**Implementation evidence:** 2 test-related file(s) detected; 2 dependency or package manifest(s) detected; 2 build/CI/infrastructure signal(s) detected; and 3 documentation or governance file(s) detected. Test filenames observed include `tests/__init__.py`, `tests/test_main.py`. Dependency or package files include `package.json`, `requirements.txt`. Build, CI, or infrastructure signals include `Dockerfile`, `.github/workflows/ci.yml`.
+## Verify
 
-**Current status:** The repository is tracked on the `main` branch. The existing source tree, configuration, tests, workflows, and documentation remain authoritative for supported behavior and maturity. A code audit is not a production-readiness certification, and the presence of a test or workflow file does not establish that all checks pass.
+```bash
+mkdir -p out/main out/test
+javac -Xlint:all -Werror -d out/main $(find src/main/java -name '*.java')
+javac -Xlint:all -Werror -cp out/main -d out/test $(find src/test/java -name '*.java')
+java -cp out/main:out/test com.sky.eventbus.EventBusTest
+```
 
-**Relationship to the wider portfolio:** This repository is one focused component of the broader Skyler Blue Spillers portfolio across AI, software engineering, cloud and DevOps, cybersecurity, blockchain, finance, education, social systems, and creative work. It may provide a service boundary, implementation pattern, experiment, archive, or reusable idea for related repositories. Treat repositories as technical dependencies only where documented interfaces and verified project requirements support that relationship.
+Build a runnable artifact:
 
-**Quality and security note:** No obvious secret-like pattern was detected by the limited static scan; this is not a substitute for a security audit. No TODO/FIXME marker was detected in the scanned text files.
+```bash
+jar --create --file sky-event-bus.jar --main-class com.sky.eventbus.Main -C out/main .
+java -jar sky-event-bus.jar
+```
 
----
+## Integration example
 
-# Java Event Bus
+```java
+var bus = new EventBus();
+try (var subscription = bus.subscribe("orders.created", event -> handle(event.payload()))) {
+    bus.publish(Event.create("orders.created", Map.of("source", "checkout"), "order-123"));
+}
+```
 
-![GitHub stars](https://img.shields.io/github/stars/skylerblue333/Java-Event-Bus?style=flat-square)
-![GitHub license](https://img.shields.io/github/license/skylerblue333/Java-Event-Bus?style=flat-square)
+## SKYCOIN4444 integration
 
-## 🌟 Overview
-**Java-Event-Bus** is a professional-grade project within the **SkyCoin4444** ecosystem. It focuses on delivering high-value solutions in the domain of **Python**.
+Use this library for in-process domain events inside a single JVM service: workflow hooks, local cache invalidation, application lifecycle signals, tests, and modular business events. Cross-process or durable ecosystem messaging should use a broker-backed contract through a separate adapter rather than pretending this in-memory bus is distributed infrastructure.
 
-## 🚀 Key Features
-- **Scalable Architecture**: Designed for enterprise-level growth and performance.
-- **Modern Standards**: Implements best practices for clean code and maintainability.
-- **Robust Integration**: Built to work seamlessly within modern cloud-native environments.
+## Explicit limitations
 
-## 🛠️ Technology Stack
-- **Primary Domain**: Python
-- **Ecosystem**: SkyCoin4444 Digital Platform
+This repository is not Kafka, NATS, RabbitMQ, Pulsar, a durable queue, a distributed log, a transactional outbox, or an exactly-once delivery system. Events exist only during the current process call; there is no persistence, replay, backpressure queue, retry scheduler, process isolation, authentication, authorization, tenant isolation, clustering, HA, or production deployment.
 
-## 📂 Structure
-The project is organized into a modular structure to ensure clarity and ease of development.
+Subscriber code executes synchronously on the publisher's thread. Callers must avoid blocking or untrusted handlers and should move slow work to a verified queue/worker boundary.
 
-## 👨‍💻 Author
-**Skyler Blue Spillers**
-*Professional Chess Player & Software Engineer*
-
----
-*Powered by SkyCoin4444*
+See `SECURITY.md` and `CHANGELOG.md` for product and security boundaries.
